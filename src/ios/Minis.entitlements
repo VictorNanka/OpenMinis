@@ -35,5 +35,7 @@
 	<array>
 		<string>group.com.openminis.app</string>
 	</array>
+	<key>com.apple.developer.side-button-access.allow</key>
+	<true/>
 </dict>
 </plist>

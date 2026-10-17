@@ -98,8 +98,7 @@ final class QuickActionRouter: ObservableObject {
             postNewChat()
             return true
         case ShortcutType.voiceChat:
-            QuickActionWorkflow.shared.start(.startVoice)
-            postNewChat()
+            launchVoiceChat(source: "homeScreenShortcut")
             return true
         case ShortcutType.cameraChat:
             QuickActionWorkflow.shared.start(.openCamera)
@@ -109,6 +108,17 @@ final class QuickActionRouter: ObservableObject {
             logger.warning("unknown shortcut type: \(shortcutItem.type)")
             return false
         }
+    }
+
+    /// Open a fresh chat and start voice input as soon as it mounts.
+    ///
+    /// Shared by the Home Screen "Chat with Voice" shortcut and the Japan
+    /// Side Button Access intent (`ActivateAssistantIntent`). `source` is
+    /// only for logs.
+    func launchVoiceChat(source: String) {
+        logger.info("launchVoiceChat source=\(source)")
+        QuickActionWorkflow.shared.start(.startVoice)
+        postNewChat()
     }
 
     private func postNewChat() {
