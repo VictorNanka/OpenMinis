@@ -29,12 +29,17 @@ struct ActivateAssistantIntent {
     func perform() async throws -> some IntentResult {
         logger.info("Side Button activate — launching voice chat")
 
-        // Pre-warm the capture audio session before the chat UI mounts so the
-        // mic path is already live when AIChatView starts recording (Apple:
-        // "start an audio session" immediately on side-button launch).
-        AudioSessionCoordinator.shared.begin(.capture)
-
+        // Do NOT call AudioSessionCoordinator.begin(.capture) here.
+        // The Home Screen voice path arms the mic from AIChatView →
+        // SpeechRecognitionManager.startRecording(), which configures
+        // AVAudioSession directly and never ends a coordinator `.capture`
+        // claim. A begin without a matching end would pin isCapturing and
+        // block reply TTS for the rest of the process.
+        //
         // Same navigation + mic start path as Home Screen "Chat with Voice".
+        // launchVoiceChat marks the workflow non-idle before any await so
+        // ContentView's launchScreen .task treats this as quickActionPending
+        // even on cold start (when perform() races session list loading).
         QuickActionRouter.shared.launchVoiceChat(source: "sideButton")
 
         return .result()

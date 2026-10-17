@@ -27,8 +27,9 @@ check("QuickActionRouter.swift readable", !router.isEmpty)
 
 check(
     "entitlement com.apple.developer.side-button-access.allow is true",
-    entitlements.contains("com.apple.developer.side-button-access.allow")
-        && entitlements.contains("<true/>")
+    entitlements.contains(
+        "<key>com.apple.developer.side-button-access.allow</key>\n\t<true/>"
+    )
 )
 
 check(
@@ -44,8 +45,9 @@ check(
     intent.contains("@available(iOS 26.0, *)")
 )
 check(
-    "intent pre-warms capture audio session",
-    intent.contains("AudioSessionCoordinator.shared.begin(.capture)")
+    "intent does NOT orphan a coordinator .capture claim",
+    !intent.contains("AudioSessionCoordinator.shared.begin(")
+        && !intent.contains("beginAndWait(")
 )
 check(
     "intent launches voice chat via QuickActionRouter",
@@ -59,6 +61,11 @@ check(
 check(
     "Home Screen voice shortcut uses launchVoiceChat",
     router.contains("launchVoiceChat(source: \"homeScreenShortcut\")")
+)
+check(
+    "QuickActionRouter has sticky externalLaunchPending for App Intent cold start",
+    router.contains("externalLaunchPending")
+        && router.contains("func clearExternalLaunchPending()")
 )
 
 check(

@@ -43,6 +43,15 @@ final class QuickActionRouter: ObservableObject {
     /// counter form a belt-and-braces wakeup path.
     @Published private(set) var newChatTrigger: Int = 0
 
+    /// Sticky "an external voice/camera launch is in flight" flag for the
+    /// App Intent cold-start path (Side Button Access). Home Screen
+    /// shortcuts are delivered in `SceneDelegate.scene(_:willConnectTo:)`
+    /// before ContentView mounts; App Intents call `perform()` later and
+    /// can lose the race with the launchScreen `.task` unless something
+    /// wider than `newChatTrigger` is visible across that await. Cleared
+    /// when ContentView consumes the matching `newChatTrigger`.
+    @Published private(set) var externalLaunchPending: Bool = false
+
     private init() {}
 
     // MARK: - Shortcut item types (also referenced from AppDelegate)
@@ -117,8 +126,20 @@ final class QuickActionRouter: ObservableObject {
     /// only for logs.
     func launchVoiceChat(source: String) {
         logger.info("launchVoiceChat source=\(source)")
+        // Mark pending BEFORE workflow/trigger so a ContentView `.task`
+        // that resumes mid-perform still sees an in-flight launch.
+        externalLaunchPending = true
         QuickActionWorkflow.shared.start(.startVoice)
         postNewChat()
+    }
+
+    /// Called by ContentView when it consumes `newChatTrigger` so the
+    /// sticky App Intent cold-start flag cannot suppress a later normal
+    /// launchScreen open.
+    func clearExternalLaunchPending() {
+        if externalLaunchPending {
+            externalLaunchPending = false
+        }
     }
 
     private func postNewChat() {

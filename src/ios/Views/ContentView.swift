@@ -1670,6 +1670,10 @@ struct ContentView: View {
         .onChange(of: quickActionRouter.newChatTrigger) { newValue in
             guard newValue != consumedQuickActionTrigger else { return }
             consumedQuickActionTrigger = newValue
+            // [T-ios-side-button-access] Drop the sticky App Intent cold-start
+            // flag together with the trigger so a later ordinary launch is
+            // not still treated as quickActionPending.
+            quickActionRouter.clearExternalLaunchPending()
             handleNewChatRequest()
         }
         .onReceive(QuickActionWorkflow.shared.$state) { newState in
@@ -1683,6 +1687,9 @@ struct ContentView: View {
         .onAppear {
             if quickActionRouter.newChatTrigger != consumedQuickActionTrigger {
                 consumedQuickActionTrigger = quickActionRouter.newChatTrigger
+                // [T-ios-side-button-access] Clear sticky App Intent flag with
+                // the trigger (same as the onChange path above).
+                quickActionRouter.clearExternalLaunchPending()
                 // Defer one runloop so the NavigationStack body has a
                 // chance to attach `$navigationPath` before we append to
                 // it — otherwise the append on a freshly-mounted stack
@@ -2050,7 +2057,13 @@ struct ContentView: View {
                 if case .idle = QuickActionWorkflow.shared.state { return false }
                 return true
             }()
-            let quickActionPending = quickActionRouter.newChatTrigger != consumedQuickActionTrigger || workflowActive
+            // [T-ios-side-button-access] Also honour `externalLaunchPending`:
+            // Side Button App Intents call perform() later than SceneDelegate
+            // cold-launch shortcuts, and can otherwise lose the race with this
+            // launchScreen evaluation while listSessions() was awaiting.
+            let quickActionPending = quickActionRouter.newChatTrigger != consumedQuickActionTrigger
+                || workflowActive
+                || quickActionRouter.externalLaunchPending
             shareLog.info("[Share] .task: hasPendingShare=\(shareCoordinator.hasPendingShare) launchScreen=\(launchScreen) sessions=\(sessions.count) bufferVersion=\(shareCoordinator.bufferVersion) shareAlreadyHandled=\(shareAlreadyHandled) quickActionPending=\(quickActionPending) workflowActive=\(workflowActive)")
 
             // [T-notification-tap-vs-launch-session] A notification tap's
